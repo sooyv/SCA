@@ -1,51 +1,56 @@
-import selenium
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-import time
-from bs4 import BeautifulSoup
+import yaml
+import requests
+from pymongo import MongoClient
+from urllib.parse import quote
+from backend.app.db import mongoDB
+import os
 
 
-def main():
-    # 크롬드라이버 경로 지정 (본인 환경에 맞게 수정)
-    driver_path = r'/data/chromedriver-win64/chromedriver.exe'  # 또는 절대 경로
+# 뉴스 검색 함수
+def fetch_naver_news(query, display=10):
+    with open(r"/config/application.yaml", "r") as file:
+        config = yaml.safe_load(file)
+        client_id = config["naver_API"]["client_id"]
+        client_secret = config["naver_API"]["client_secret"]
 
-    # 검색어: "AI"로 Naver 뉴스 검색 결과 URL 구성
-    query = 'AI'
-    url = f'https://search.naver.com/search.naver?where=news&query={query}'
+    # 1. 네이버 API 인증 정보
+    CLIENT_ID = client_id
+    CLIENT_SECRET = client_secret
 
-    # Selenium으로 페이지 요청
-    service = Service(driver_path)
-    options = webdriver.ChromeOptions()
-    # options.add_argument('--headless')  # 창을 띄우지 않음
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
+    url = f"https://openapi.naver.com/v1/search/news.json?query={quote(query)}&display={display}"
 
-    driver = webdriver.Chrome(service=service, options=options)
-    driver.get(url)
-    time.sleep(2)  # 페이지 로딩 대기
+    headers = {
+        "X-Naver-Client-Id": CLIENT_ID,
+        "X-Naver-Client-Secret": CLIENT_SECRET
+    }
 
-    # 페이지 소스 가져오기
-    html = driver.page_source
-    soup = BeautifulSoup(html, 'html.parser')
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        items = response.json()["items"]
+        # return items
+    else:
+        print("Error:", response.status_code)
+        # return []
 
-    # 뉴스 기사 정보 파싱
-    news_items = soup.select('div.sds-comps-vertical-layout sds-comps-full-layout J99id_FmVoUQSFiLEpbw')  # 뉴스 영역 선택자
-    for item in news_items:
-        title_tag = item.select_one('a.news_tit')
-        if title_tag:
-            title = title_tag.text
-            link = title_tag['href']
-            print(f'제목: {title}')
-            print(f'링크: {link}')
-            print('-' * 50)
+    conn = mongoDB.db_connect()
+    mongoDB.db_insert(conn.collection, items)
 
-    driver.quit()
+# 4. MongoDB 저장 함수
+# def save_urls_to_mongo(news_items):
+#     for item in news_items:
+#         document = {
+#             "title": item["title"],
+#             "link": item["link"],
+#             "pubDate": item["pubDate"]
+#         }
+#         if collection.count_documents({"link": item["link"]}, limit=1) == 0:
+#             collection.insert_one(document)
+#             print(f"저장됨: {item['link']}")
+#         else:
+#             print(f"이미 있음: {item['link']}")
 
-
-# def main():
-#     print('소영이랑 저녁밥 먹기')
-
-
+# 5. 실행
 if __name__ == "__main__":
-    main()
+    search_query = "네이버"  # 검색 키워드
+    news_results = fetch_naver_news(search_query, display=20)
+    # save_urls_to_mongo(news_results)
