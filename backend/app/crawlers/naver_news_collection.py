@@ -1,17 +1,14 @@
-import yaml
 import requests
-from pymongo import MongoClient
+from config.loader import load_config
 from urllib.parse import quote
 from backend.app.db import mongoDB
-import os
 
 
 # 뉴스 검색 함수
 def fetch_naver_news(query, display=10):
-    with open(r"/config/application.yaml", "r") as file:
-        config = yaml.safe_load(file)
-        client_id = config["naver_API"]["client_id"]
-        client_secret = config["naver_API"]["client_secret"]
+    config = load_config()
+    client_id = config["naver_API"]["client_id"]
+    client_secret = config["naver_API"]["client_secret"]
 
     # 1. 네이버 API 인증 정보
     CLIENT_ID = client_id
@@ -32,8 +29,8 @@ def fetch_naver_news(query, display=10):
         print("Error:", response.status_code)
         # return []
 
-    conn = mongoDB.db_connect()
-    mongoDB.db_insert(conn.collection, items)
+    collection = mongoDB.db_connect()
+    mongoDB.db_insert(collection, items)
 
 # 4. MongoDB 저장 함수
 # def save_urls_to_mongo(news_items):
@@ -51,6 +48,6 @@ def fetch_naver_news(query, display=10):
 
 # 5. 실행
 if __name__ == "__main__":
-    search_query = "네이버"  # 검색 키워드
-    news_results = fetch_naver_news(search_query, display=20)
+    search_query = "삼성전자"  # 검색 키워드
+    news_results = fetch_naver_news(search_query, display=100)
     # save_urls_to_mongo(news_results)
