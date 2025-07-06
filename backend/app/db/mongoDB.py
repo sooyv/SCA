@@ -17,7 +17,7 @@ def db_connect():
 
         # MongoDB 연결
         mongo_client = MongoClient(mongodb_uri)
-        mongo_client.server_info()
+        # mongo_client.server_info()
         db = mongo_client[db_name]
         collection = db[collection_name]
 
@@ -29,9 +29,10 @@ def db_connect():
 
 
 # mongoDB에 raw data insert(제목, URL, 게시글 등록 날짜)
-def db_insert(collection, news_items):
+def db_insert(collection, news_items, keyword):
     for item in news_items:
         document = {
+            "keyword": keyword,
             "title": item["title"],
             "link": item["link"],
             "pubDate": item["pubDate"]
