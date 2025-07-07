@@ -1,0 +1,6 @@
+# Python virtual environment
+venv/
+
+# 환경 설정 파일
+.env
+config/application.yaml

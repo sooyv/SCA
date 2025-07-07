@@ -2,9 +2,45 @@ import requests
 from config.loader import load_config
 from urllib.parse import quote
 from backend.app.db import mongoDB
+from bs4 import BeautifulSoup
 
 
-# 뉴스 검색 함수
+def get_urls():
+    collection = mongoDB.db_connect()
+    return collection.find({}, {"_id": 1, "link": 1})
+
+
+def crawl_news_urls():
+    for item in get_urls():
+        _id = item["_id"]
+        url = item.get("link")
+        try:
+            response = requests.get(url)
+            soup = BeautifulSoup(response.text, "html.parser")
+            print(soup)
+            # 기사제목
+            # title = soup.select_one("h2#title_area").text
+
+            #언론사
+            press_tag = soup.select_one("span.media_end_head_top_logo_text").text
+
+            # 본문
+            content_tag = soup.select_one("article#dic_area")
+            content = content_tag.get_text(separator="\n")
+            content = content.replace('\xa0', ' ')  # &nbsp; 처리
+            content = '\n'.join(line.strip() for line in content.splitlines() if line.strip())
+
+            update_fields = {"press": press_tag, "content": content}
+
+            # 크롤링 데이터 추가 - 업데이트
+            mongoDB.db_update(_id, update_fields)
+
+        except requests.exceptions.RequestException as e:
+            print(e)
+
+
+
+# 뉴스 API 호출 및 mongoDB 저장
 def fetch_naver_news(keyword, display=10):
     # API 인증 정보가 담긴 yaml 파일 load
     config = load_config()
@@ -52,4 +88,5 @@ def fetch_naver_news(keyword, display=10):
 # 실행
 if __name__ == "__main__":
     search_keyword = "삼성전자"  # 검색 키워드
-    news_results = fetch_naver_news(search_keyword, display=100)
+    # news_results = fetch_naver_news(search_keyword, display=100)
+    crawl_news_urls()

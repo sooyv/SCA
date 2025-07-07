@@ -51,3 +51,9 @@ def db_insert(collection, news_items, keyword):
             # else:
                 # print(f"이미 있음: {item['link']}")
     print(count)
+
+
+
+def db_update(_id, update_fields):
+    collection = db_connect()
+    collection.update_one({"_id": _id}, {"$set": update_fields})
