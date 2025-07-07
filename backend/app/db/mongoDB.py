@@ -1,3 +1,4 @@
+import re
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
 from config.loader import load_config
@@ -6,6 +7,7 @@ from config.loader import load_config
 # mongoDB 연결
 def db_connect():
     try:
+        # mongoDB 정보가 담긴 yaml load
         config = load_config()
         mongodb_uri = config["mongodb"]["uri"]
         # MongoDB 서버
@@ -17,6 +19,7 @@ def db_connect():
 
         # MongoDB 연결
         mongo_client = MongoClient(mongodb_uri)
+        # mongoDB 서버 응답 테스트
         # mongo_client.server_info()
         db = mongo_client[db_name]
         collection = db[collection_name]
@@ -30,16 +33,21 @@ def db_connect():
 
 # mongoDB에 raw data insert(제목, URL, 게시글 등록 날짜)
 def db_insert(collection, news_items, keyword):
+    # n.news.naver.com 도메인만 허용(뉴스들의 UI가 다르므로 네이버 뉴스만 수집)
+    naver_domain_pattern = re.compile(r"^https://n\.news\.naver\.com/")
+    count = 0 # 수집된 뉴스 카운트
     for item in news_items:
         document = {
-            "keyword": keyword,
-            "title": item["title"],
-            "link": item["link"],
-            "pubDate": item["pubDate"]
+            "title": item["title"], # 제목
+            "link": item["link"], # 뉴스 URL
+            "pubDate": item["pubDate"], # 뉴스 등록 시간
+            "keyword": keyword, # 수집 키워드
         }
-        # documents(데이터) 중복 제거
-        if collection.count_documents({"link": item["link"]}, limit=1) == 0:
-            collection.insert_one(document)
-            print(f"저장됨: {item['link']}")
-        else:
-            print(f"이미 있음: {item['link']}")
+        if re.match(naver_domain_pattern, item["link"]):# 정규표현식으로 네이버 뉴스만 포함
+            if collection.count_documents({"link": item["link"]}, limit=1) == 0: # documents(데이터) 중복 제거
+                collection.insert_one(document)
+                count += 1
+                # print(f"저장 완료: {item['link']}")
+            # else:
+                # print(f"이미 있음: {item['link']}")
+    print(count)
