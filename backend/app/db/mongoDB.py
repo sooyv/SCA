@@ -53,7 +53,16 @@ def db_insert(collection, news_items, keyword):
     print(count)
 
 
-
+# 단일 문서 업데이트
 def db_update(_id, update_fields):
     collection = db_connect()
     collection.update_one({"_id": _id}, {"$set": update_fields})
+
+
+# 여러 문서 일괄 업데이트
+def db_bulk_update(update_commands):
+    collection = db_connect()
+    if update_commands:
+        result = collection.bulk_write(update_commands)
+        return result.modified_count
+    return 0
