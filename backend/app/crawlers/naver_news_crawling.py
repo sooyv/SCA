@@ -1,5 +1,6 @@
 import re
 import requests
+import html
 from backend.app.db import mongoDB
 from bs4 import BeautifulSoup
 from pymongo import UpdateOne
@@ -9,6 +10,21 @@ def get_urls():
     collection = mongoDB.db_connect()
     # return collection.find({}, {"_id": 1, "link": 1}) # mongoDB 전체 데이터 조회
     return collection.find({"content": {"$exists": False}}, {"_id": 1, "link": 1}) # mongoDB content 필드 없는 데이터만 조회
+
+def preprocess_title(title: str) -> str:
+    # 1. HTML 엔티티 변환 (예: &quot; → ")
+    title = html.unescape(title)
+
+    # 2. 불필요한 태그/기호/대괄호 제거
+    title = re.sub(r"\[.*?\]", "", title)  # [단독], [속보] 제거
+    title = re.sub(r"[\"“”‘’<>]", "", title)  # 따옴표, 꺽쇠 제거
+    title = re.sub(r"[·\|▶…※※▲■◆★◎]", " ", title)  # 특수문자 제거
+    title= re.sub(r'[A-Z]', lambda match: match.group(0).lower(), title) # 영어는 소문자로 변환
+
+    # 3. 중복 공백 제거
+    title = re.sub(r"\s+", " ", title).strip()
+
+    return title
 
 # 뉴스 본문 전처리(정규표현식)
 def preprocess_content(text):
@@ -30,6 +46,7 @@ def preprocess_content(text):
     text = re.sub(r'\[\s*(사진|자료|도표|연합뉴스)\s*.*?\]', '', text)
     # 한글, 영어, 숫자, 기본 문장 부호(., ?!) 외 특수 문자 제거
     text = re.sub(r'[^가-힣a-zA-Z0-9.,?!]', ' ', text)
+    text = re.sub(r'[A-Z]', lambda match: match.group(0).lower(), text)  # 영어는 소문자로 변환
     # 연속된 공백을 단일 공백으로 치환
     text = re.sub(r'\s+', ' ', text)
 
@@ -48,7 +65,8 @@ def crawl_news_urls():
             response = requests.get(url) # 기사 URL로 요청
             soup = BeautifulSoup(response.text, "html.parser") # HTML 파싱
             # 기사 제목
-            # title = soup.select_one("h2#title_area").text
+            title = soup.select_one("h2#title_area").text
+            pre_title = preprocess_title(title)
             # 언론사
             press_tag = soup.select_one("span.media_end_head_top_logo_text").text.strip()
 
@@ -62,7 +80,7 @@ def crawl_news_urls():
 
                 updates.append(UpdateOne(
                     {"_id": _id},
-                    {"$set": {"press": press_tag, "content": content}}
+                    {"$set": {"press": press_tag, "content": content, 'title': pre_title}},
                 ))
 
         except requests.exceptions.RequestException as e:
