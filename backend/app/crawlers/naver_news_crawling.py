@@ -38,17 +38,17 @@ def preprocess_content(text):
     text = re.sub(r'\[\s*(영상)?(취재|편집|기자)\s*[^\]]+?\]', '', text)
     # 해시태그 제거 (#환율 #코스피 등)
     text = re.sub(r'#\S+\s*', '', text)
-    # 특정 언론사 기사문의 및 제보 정보 제거 (연합뉴스TV 등)
-    text = re.sub(r'연합뉴스TV 기사문의 및 제보\s*:\s*(카톡|라인)\s*jebo23', '', text)
     # 괄호 안의 불필요한 섹션 제거 ((서울=연합뉴스), (사진=...) 등)
     text = re.sub(r'\([가-힣\s=]+[가-힣]+뉴스\s*\)|\([가-힣\s=]+\s*제공\s*\)|\([가-힣\s=]+\s*자료\s*\)|\(사진=\S+\)|\[사진=\S+\]|\(끝\)',
                   '', text)
     text = re.sub(r'\[\s*(사진|자료|도표|연합뉴스)\s*.*?\]', '', text)
     # 한글, 영어, 숫자, 기본 문장 부호(., ?!) 외 특수 문자 제거
     text = re.sub(r'[^가-힣a-zA-Z0-9.,?!]', ' ', text)
-    text = re.sub(r'[A-Z]', lambda match: match.group(0).lower(), text)  # 영어는 소문자로 변환
     # 연속된 공백을 단일 공백으로 치환
     text = re.sub(r'\s+', ' ', text)
+    # 특정 언론사 기사문의 및 제보 정보 제거 (연합뉴스TV 등)
+    text = re.sub(r'연합뉴스TV 기사문의 및 제보\s*:\s*(카톡|라인)\s*jebo23', '', text)
+    text = re.sub(r'[A-Z]', lambda match: match.group(0).lower(), text)  # 영어는 소문자로 변환
 
     # 양쪽 끝 공백 제거
     text = text.strip()
